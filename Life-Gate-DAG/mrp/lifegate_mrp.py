@@ -3,7 +3,7 @@ import numpy as np
 from graphviz import Digraph
 
 class LifeGateMRP:
-    def __init__(self, max_num_states=20, p_terminal=0.2, max_branch=3, seed=42):
+    def __init__(self, max_num_states=20, p_terminal=0.2, max_branch=3, allow_cycles=False,  relapse_prob=0.0, seed=42):
         """
         Initializes the LifeGate MRP environment with a randomly generated DAG.
 
@@ -22,8 +22,12 @@ class LifeGateMRP:
         self.state_roles = {}
         self.states = []
         self.state_idx = {}
+        self.allow_cycles = allow_cycles
+        self.relapse_prob = relapse_prob
+
         self.generate_dag()
         self.tagging_dag()
+        
 
     def generate_dag(self):
         """
@@ -46,9 +50,16 @@ class LifeGateMRP:
         next_state_id = 1
 
         # terminal states are defined to be absorbing states with 100% chance of transitioning to itself
+        # modified ver.: if relapse_prob > 0, then recovery state is also absorbing with some chance of transitioning to itself
         transitions["death"] = {"death": 1.0}
-        transitions["recovery"] = {"recovery": 1.0}
-
+        if self.relapse_prob > 0:
+            transitions["recovery"] = {
+                "recovery": 1.0 - self.relapse_prob,
+                "s0": self.relapse_prob
+            }
+        else:
+            transitions["recovery"] = {"recovery": 1.0}
+        
         while len(all_states) + 2 < self.max_num_states and state_queue:
             current = state_queue.pop(0)
             transitions[current] = {}
@@ -64,11 +75,15 @@ class LifeGateMRP:
                 probs = [p / sum(probs) for p in probs]
 
                 for i in range(num_children):
-                    child = f"s{next_state_id}"
-                    next_state_id += 1
-                    all_states.append(child)
-                    state_queue.append(child)
+                    if self.allow_cycles and random.random() < 0.3 and all_states:
+                        child = random.choice(all_states)
+                    else:
+                        child = f"s{next_state_id}"
+                        next_state_id += 1
+                        all_states.append(child)
+                        state_queue.append(child)
                     transitions[current][child] = probs[i]
+
 
         # resolve remaining queue nodes to terminal
         for current in state_queue:
@@ -141,9 +156,10 @@ class LifeGateMRP:
         - dot (graphviz.Digraph): Graph object representing the MRP structure.
         """
         dot = Digraph(comment=title)
-        dot.attr(rankdir='LR', fontname=fontname)
+        dot.attr(rankdir='LR', fontname=fontname, size="10,10")
         dot.attr('node', fontname=fontname)
         dot.attr('edge', fontname=fontname)
+    
 
         for state in self.transitions:
             role = self.state_roles.get(state, "rescue")
@@ -220,6 +236,102 @@ class LifeGateMRP:
 
         return P, R
     
+    def build_mrp_matrices_partial_reward(self, version="recovery", dead_end_bonus=0.0):
+        """
+        Builds the transition matrix (P) and reward vector (R) for the MRP.
+
+        Parameters:
+        - version (str): 
+            'recovery' => reward = 1 for transitions into 'recovery'; 0 otherwise.
+            'death'    => reward = -1 for transitions into 'death'; 0 otherwise.
+        - dead_end_bonus (float): Reward for entering dead-end states (default 0 = no shaping).
+
+        Returns:
+        - P (np.ndarray, shape (n, n)): Transition matrix.
+        - R (np.ndarray, shape (n)): Reward vector.
+        """
+        n = len(self.states)
+        P = np.zeros((n, n))
+        R = np.zeros(n)
+
+        recovery_idx = self.state_idx["recovery"]
+        death_idx = self.state_idx["death"]
+
+        for from_state, to_probs in self.transitions.items():
+            i = self.state_idx[from_state]
+
+            for to_state, prob in to_probs.items():
+                j = self.state_idx[to_state]
+                P[i, j] = prob
+
+                # Terminal reward logic
+                if version == "recovery" and to_state == "recovery":
+                    R[i] += prob * 1.0
+                elif version == "death" and to_state == "death":
+                    R[i] += prob * -1.0
+
+                # Dead-end bonus shaping
+                elif self.state_roles.get(to_state) == "dead_end":
+                    R[i] += prob * dead_end_bonus
+
+        # Terminal states are absorbing
+        P[recovery_idx, :] = 0
+        P[recovery_idx, recovery_idx] = 1.0
+        R[recovery_idx] = 0.0
+
+        P[death_idx, :] = 0
+        P[death_idx, death_idx] = 1.0
+        R[death_idx] = 0.0
+
+        return P, R
+
+    def build_mrp_matrices_with_relapse(self, version="recovery", dead_end_bonus=0.0):
+        """
+        Version-aware MRP builder that respects relapse dynamics.
+
+        If relapse_prob > 0, recovery is not absorbing.
+        If relapse_prob = 0, recovery is absorbing.
+
+        Returns:
+        - P: np.ndarray (n x n) transition matrix
+        - R: np.ndarray (n) reward vector
+        """
+        n = len(self.states)
+        P = np.zeros((n, n))
+        R = np.zeros(n)
+
+        recovery_idx = self.state_idx["recovery"]
+        death_idx = self.state_idx["death"]
+
+        for from_state, to_probs in self.transitions.items():
+            i = self.state_idx[from_state]
+            for to_state, prob in to_probs.items():
+                j = self.state_idx[to_state]
+                P[i, j] = prob
+
+                if version == "recovery" and to_state == "recovery":
+                    R[i] += prob * 1.0
+                elif version == "death" and to_state == "death":
+                    R[i] += prob * -1.0
+                elif self.state_roles.get(to_state) == "dead_end":
+                    R[i] += prob * dead_end_bonus
+
+        # Death is always absorbing
+        P[death_idx, :] = 0
+        P[death_idx, death_idx] = 1.0
+        R[death_idx] = 0.0
+
+        # Only force recovery to be absorbing if relapse_prob = 0
+        if self.relapse_prob == 0.0:
+            P[recovery_idx, :] = 0
+            P[recovery_idx, recovery_idx] = 1.0
+            R[recovery_idx] = 0.0
+
+        return P, R
+
+
+
+    
     def value_iter_mrp(self, P, R, gamma=1.0, epsilon=1e-6, max_iters=1000):
         """
         value iteration on MRP.
@@ -242,5 +354,6 @@ class LifeGateMRP:
                 break
             V = V_next
         return V
+
 
     

@@ -6,7 +6,7 @@ if __name__ == "__main__":
     Example for how to use lifegate_mrp class.
     '''
     # step1: generate dag
-    mrp = LifeGateMRP(max_num_states=120, p_terminal=0.3, max_branch=4, seed=22)    # init mrp class
+    mrp = LifeGateMRP(max_num_states=20, p_terminal=0.3, max_branch=4, seed=1018 )    # init mrp class
     graph = mrp.visualize_mrp()
     graph.render(directory='generated-dag', view=True)                          # display generated dag
     
