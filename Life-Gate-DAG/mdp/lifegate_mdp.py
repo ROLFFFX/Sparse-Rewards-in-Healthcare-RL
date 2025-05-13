@@ -1,0 +1,372 @@
+import random
+import numpy as np
+from graphviz import Digraph
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+class LifeGate_MDP:
+    def __init__(self, max_num_states=20, p_terminal=0.2, max_actions=2, seed=42, mode="+-"):
+        assert max_num_states > 2, "Minimum 3 states required (1 start, 2 terminals)"
+        self.max_num_states = max_num_states
+        self.p_terminal = p_terminal
+        self.max_actions = max_actions
+        self.seed = seed
+        self.mode = mode
+
+        self.transitions = {}
+        self.state_roles = {}
+        self.states = []
+        self.state_idx = {}
+        self.actions = [str(i) for i in range(max_actions)]
+
+        self.generate_dag()
+        self.tagging_dag()
+
+    def reward_fn(self, terminal_state):
+        if self.mode == "+":
+            return 1.0 if terminal_state == "recovery" else 0.0
+        elif self.mode == "-":
+            return -1.0 if terminal_state == "death" else 0.0
+        else:  # "+-" and default
+            return 1.0 if terminal_state == "recovery" else -1.0
+
+    def generate_dag(self):
+        random.seed(self.seed)
+        transitions = {}
+        state_queue = ["s0"]
+        all_states = ["s0"]
+        next_state_id = 1
+
+        transitions["death"] = {a: {"death": (1.0, 0.0)} for a in self.actions}
+        transitions["recovery"] = {a: {"recovery": (1.0, 0.0)} for a in self.actions}
+
+        while len(all_states) + 2 < self.max_num_states and state_queue:
+            current = state_queue.pop(0)
+            transitions[current] = {}
+
+            for a in self.actions:
+                num_children = random.randint(1, 2)
+                remaining = self.max_num_states - len(all_states) - 2
+                remaining = 1 if remaining == 0 else remaining
+                num_children = min(num_children, remaining)
+
+
+                probs = [random.random() for _ in range(num_children)]
+                probs = [p / sum(probs) for p in probs]
+
+                child_map = {}
+                for i in range(num_children):
+                    child = f"s{next_state_id}"
+                    next_state_id += 1
+                    all_states.append(child)
+                    state_queue.append(child)
+                    child_map[child] = probs[i]
+
+                for terminal in ["death", "recovery"]:
+                    if random.random() < self.p_terminal:
+                        child_map[terminal] = child_map.get(terminal, 0.0) + random.uniform(0.05, 0.3)
+
+                total = sum(child_map.values())
+                child_map = {k: v / total for k, v in child_map.items()}
+
+                transitions[current][a] = {}
+                for state, prob in child_map.items():
+                    if state == "recovery":
+                        reward = 1.0 if self.mode == "+-" or self.mode == "+" else 0
+                    elif state == "death":
+                        reward = -1.0 if self.mode == "+-" or self.mode  == "-" else 0
+                    else:
+                        reward = 0.0
+                    transitions[current][a][state] = (prob, reward)
+
+        for current in state_queue:
+            transitions[current] = {}
+            for a in self.actions:
+                child_map = {}
+                for terminal in ["death", "recovery"]:
+                    if random.random() < self.p_terminal:
+                        child_map[terminal] = random.uniform(0.2, 0.8)
+                if not child_map:
+                    child_map["death"] = 1.0
+                else:
+                    total = sum(child_map.values())
+                    child_map = {k: v / total for k, v in child_map.items()}
+
+                transitions[current][a] = {}
+                for state, prob in child_map.items():
+                    if state == "recovery":
+                        reward = 1.0 if self.mode == "+-" or self.mode == "+" else 0
+                    elif state == "death":
+                        reward = -1.0 if self.mode == "+-" or self.mode == "-" else 0
+                    else:
+                        reward = 0.0
+                    transitions[current][a][state] = (prob, reward)
+
+        self.transitions = transitions
+
+    def tagging_dag(self):
+        terminal_states = {"death", "recovery"}
+        state_roles = {s: "terminal" for s in terminal_states}
+
+        for state in self.transitions:
+            if state not in terminal_states:
+                state_roles[state] = "rescue"
+
+        all_states = set(self.transitions.keys())
+        all_destinations = {s for dests in self.transitions.values() for d in dests.values() for s in d}
+        full_states = sorted(all_states.union(all_destinations))
+        state_idx = {s: i for i, s in enumerate(full_states)}
+
+        self.state_roles = state_roles
+        self.states = full_states
+        self.state_idx = state_idx
+
+    def build_mdp_matrices(self):
+        n = len(self.states)
+        P_dict = {}
+        R_dict = {}
+
+        for a in self.actions:
+            P = np.zeros((n, n))
+            R = np.zeros(n)
+
+            for from_state, action_map in self.transitions.items():
+                if a not in action_map:
+                    continue
+                i = self.state_idx[from_state]
+                for to_state, (prob, reward) in action_map[a].items():
+                    j = self.state_idx[to_state]
+                    P[i, j] = prob
+                    R[i] = reward
+
+            for term in ["death", "recovery"]:
+                idx = self.state_idx[term]
+                P[idx, :] = 0
+                P[idx, idx] = 1.0
+                R[idx] = 0.0
+
+            P_dict[a] = P
+            R_dict[a] = R
+
+        return self.actions, P_dict, R_dict
+
+    def visualize_mdp(self, title="LifeGate-MDP"):
+        dot = Digraph(comment=title)
+        dot.attr(rankdir='LR')
+
+        for state in self.transitions:
+            role = self.state_roles.get(state, "rescue")
+            if role == "terminal":
+                color = "red" if state == "death" else "green"
+            elif role == "rescue":
+                color = "lightgreen"
+            else:
+                color = "purple"
+            dot.node(state, state, style="filled", fillcolor=color)
+
+        for from_state, actions in self.transitions.items():
+            for a, to_states in actions.items():
+                for to_state, (prob, _) in to_states.items():
+                    dot.edge(from_state, to_state, label=f"{a}: {prob:.2f}")
+
+        with dot.subgraph(name='cluster_legend') as legend:
+            legend.attr(label="Legend", style="solid")
+            legend.attr(rank='same')
+            legend.node("L_rescue", "Rescue State", style="filled", fillcolor="lightgreen")
+            legend.node("L_death", "Death (Terminal)", style="filled", fillcolor="red", fontcolor="white")
+            legend.node("L_recovery", "Recovery (Terminal)", style="filled", fillcolor="green", fontcolor="white")
+            legend.edge("L_rescue", "L_death", style="invis")
+            legend.edge("L_death", "L_recovery", style="invis")
+
+        return dot
+
+    def visualize_rewards(self, title="LifeGate-MDP (Rewards)"):
+        dot = Digraph(comment=title)
+        dot.attr(rankdir='LR')
+
+        for state in self.transitions:
+            role = self.state_roles.get(state, "rescue")
+            if role == "terminal":
+                color = "red" if state == "death" else "green"
+            elif role == "rescue":
+                color = "lightgreen"
+            else:
+                color = "purple"
+            dot.node(state, state, style="filled", fillcolor=color)
+
+        for from_state, actions in self.transitions.items():
+            for a, to_states in actions.items():
+                for to_state, (prob, reward) in to_states.items():
+                    dot.edge(from_state, to_state, label=f"{a}: R={reward:.2f}")
+
+        with dot.subgraph(name='cluster_legend') as legend:
+            legend.attr(label="Legend", style="solid")
+            legend.attr(rank='same')
+            legend.node("L_rescue", "Rescue State", style="filled", fillcolor="lightgreen")
+            legend.node("L_death", "Death (Terminal)", style="filled", fillcolor="red", fontcolor="white")
+            legend.node("L_recovery", "Recovery (Terminal)", style="filled", fillcolor="green", fontcolor="white")
+            legend.edge("L_rescue", "L_death", style="invis")
+            legend.edge("L_death", "L_recovery", style="invis")
+
+        return dot
+
+    def policy_eval(self, policy=None, theta=0.0001, gamma=1.0):
+        V = {s: 0.0 for s in self.states}
+
+        while True:
+            delta = 0.0
+            for state in self.states:
+                if state in ("death", "recovery"):
+                    continue
+
+                if policy:
+                    action = policy.get(state)
+                    if action is None or action not in self.transitions[state]:
+                        continue
+                    transitions = self.transitions[state][action]
+                    v = sum(prob * (reward + gamma * V[next_state])
+                            for next_state, (prob, reward) in transitions.items())
+                else:
+                    available_actions = self.transitions[state].keys()
+                    num_actions = len(available_actions)
+                    v = 0.0
+                    for a in available_actions:
+                        transitions = self.transitions[state][a]
+                        for next_state, (prob, reward) in transitions.items():
+                            v += (1 / num_actions) * prob * (reward + gamma * V[next_state])
+
+                delta = max(delta, abs(v - V[state]))
+                V[state] = v
+
+            if delta < theta:
+                break
+
+        return V
+
+    def policy_iter(self, theta=0.0001, gamma=1.0):
+        policy = {}
+        for state in self.states:
+            if state in ("death", "recovery"):
+                continue
+            actions = list(self.transitions[state].keys())
+            if actions:
+                policy[state] = actions[0]
+
+        while True:
+            V = self.policy_eval(policy, theta=theta, gamma=gamma)
+
+            policy_stable = True
+            for state in self.states:
+                if state in ("death", "recovery"):
+                    continue
+
+                old_action = policy.get(state)
+                best_action = None
+                best_value = float('-inf')
+
+                for a in self.transitions[state]:
+                    q_value = 0.0
+                    for next_state, (prob, reward) in self.transitions[state][a].items():
+                        q_value += prob * (reward + gamma * V[next_state])
+                    if q_value > best_value:
+                        best_value = q_value
+                        best_action = a
+
+                if old_action != best_action:
+                    policy_stable = False
+                    policy[state] = best_action
+
+            if policy_stable:
+                break
+
+        V = {k: round(v, 8) for k, v in V.items()}
+        return V, policy
+
+    def compute_Qs(self, policy=None, gamma=1.0):
+        """
+        Compute Q(s, a) for all state-action pairs given a policy.
+
+        Parameters:
+            policy (dict): A dict mapping states to chosen actions
+            gamma (float): Discount factor
+
+        Returns:
+            dict: Nested dict Q[state][action] = Q-value
+        """
+        V = self.policy_eval(policy, gamma=gamma)
+        Q = {}
+
+        for state in self.states:
+            if state in ("death", "recovery"):
+                continue
+
+            Q[state] = {}
+            for action in self.transitions[state]:
+                q_value = 0.0
+                for next_state, (prob, reward) in self.transitions[state][action].items():
+                    q_value += prob * (reward + gamma * V[next_state])
+                Q[state][action] = q_value
+
+        return Q
+
+
+def plot_Vs(v_plus, v_minus, title):
+    sns.set(style="whitegrid")
+    excluded = ['recovery', 'death']
+    keys = list(k for k in v_plus.keys() & v_minus.keys() if k not in excluded)
+
+    x = [v_minus[k] for k in keys]
+    y = [v_plus[k] for k in keys]
+
+    plt.figure(figsize=(10, 8))
+    plt.scatter(x, y, color='dodgerblue', edgecolor='black', s=100, alpha=0.7)
+    plt.plot([-1, 0], [0, 1], linestyle='--', color='grey', linewidth=1.5)
+
+
+    plt.xlabel('V- (Negative Reward Value)', fontsize=14)
+    plt.ylabel('V+ (Positive Reward Value)', fontsize=14)
+    plt.title(title, fontsize=16, fontweight='bold')
+
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.grid(True, which='both', linestyle=':', linewidth=0.5)
+    plt.tight_layout()
+    plt.show()
+
+def plot_Qs(q_plus, q_minus, title):
+    """
+    Scatter plot comparing Q-values from two MDP variants (e.g., positive vs negative reward settings).
+    
+    Parameters:
+        q_plus (dict): Q-values from the MDP with positive reward setup (e.g., mode="+")
+        q_minus (dict): Q-values from the MDP with negative reward setup (e.g., mode="-")
+        title (str): Plot title
+    """
+    sns.set(style="whitegrid")
+    x, y, labels = [], [], []
+
+    for state in q_plus:
+        if state in ('death', 'recovery'):
+            continue
+        for action in q_plus[state]:
+            if state in q_minus and action in q_minus[state]:
+                x_val = q_minus[state][action]
+                y_val = q_plus[state][action]
+                x.append(x_val)
+                y.append(y_val)
+                labels.append(f"{state}, a={action}")
+
+    plt.figure(figsize=(10, 8))
+    plt.scatter(x, y, color='mediumseagreen', edgecolor='black', s=100, alpha=0.7)
+
+    plt.plot([-1, 0], [0, 1], linestyle='--', color='grey', linewidth=1.5)
+
+    plt.xlabel('Q- (Negative Reward Q-value)', fontsize=14)
+    plt.ylabel('Q+ (Positive Reward Q-value)', fontsize=14)
+    plt.title(title, fontsize=16, fontweight='bold')
+
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.grid(True, linestyle=':', linewidth=0.5)
+    plt.tight_layout()
+    plt.show()
