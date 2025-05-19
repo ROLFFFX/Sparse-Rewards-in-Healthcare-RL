@@ -31,29 +31,34 @@ class LifeGate_MDP:
             return 1.0 if terminal_state == "recovery" else -1.0
 
     def generate_dag(self):
+        # setup seed and queues
         random.seed(self.seed)
         transitions = {}
         state_queue = ["s0"]
         all_states = ["s0"]
         next_state_id = 1
 
+        # transitions for death and recovery - self absorbing
         transitions["death"] = {a: {"death": (1.0, 0.0)} for a in self.actions}
         transitions["recovery"] = {a: {"recovery": (1.0, 0.0)} for a in self.actions}
 
+        # main loop - while the max hasnt been reached, stochastically generate the next state's children
         while len(all_states) + 2 < self.max_num_states and state_queue:
             current = state_queue.pop(0)
             transitions[current] = {}
 
             for a in self.actions:
+                # either 1 or 2 children for each action
                 num_children = random.randint(1, 2)
                 remaining = self.max_num_states - len(all_states) - 2
                 remaining = 1 if remaining == 0 else remaining
                 num_children = min(num_children, remaining)
 
-
+                # calculates and normalizes random probabilities for each child
                 probs = [random.random() for _ in range(num_children)]
                 probs = [p / sum(probs) for p in probs]
 
+                # child map holds the probability of transitioning to each child, children are appended to appropriate data structures
                 child_map = {}
                 for i in range(num_children):
                     child = f"s{next_state_id}"
@@ -62,13 +67,16 @@ class LifeGate_MDP:
                     state_queue.append(child)
                     child_map[child] = probs[i]
 
+                # stochastically decide if state transitions to terminal state
                 for terminal in ["death", "recovery"]:
                     if random.random() < self.p_terminal:
                         child_map[terminal] = child_map.get(terminal, 0.0) + random.uniform(0.05, 0.3)
 
+                # normalize the probabilities if any went above 1 (because of the terminal probabilities)
                 total = sum(child_map.values())
                 child_map = {k: v / total for k, v in child_map.items()}
 
+                # add proper rewards based on the mode
                 transitions[current][a] = {}
                 for state, prob in child_map.items():
                     if state == "recovery":
@@ -79,6 +87,7 @@ class LifeGate_MDP:
                         reward = 0.0
                     transitions[current][a][state] = (prob, reward)
 
+        # make sure that the rest of the queue is handled once we have reached the max
         for current in state_queue:
             transitions[current] = {}
             for a in self.actions:
@@ -104,6 +113,7 @@ class LifeGate_MDP:
 
         self.transitions = transitions
 
+    # tagging function for graph depiction
     def tagging_dag(self):
         terminal_states = {"death", "recovery"}
         state_roles = {s: "terminal" for s in terminal_states}
@@ -333,7 +343,7 @@ def plot_Vs(v_plus, v_minus, title):
     plt.tight_layout()
     plt.show()
 
-def plot_Qs(q_plus, q_minus, title):
+def plot_Qs(q_plus, q_minus, title, size=(3, 3)):
     """
     Scatter plot comparing Q-values from two MDP variants (e.g., positive vs negative reward settings).
     
@@ -356,17 +366,18 @@ def plot_Qs(q_plus, q_minus, title):
                 y.append(y_val)
                 labels.append(f"{state}, a={action}")
 
-    plt.figure(figsize=(10, 8))
-    plt.scatter(x, y, color='mediumseagreen', edgecolor='black', s=100, alpha=0.7)
+    plt.figure(figsize=size)
+    plt.scatter(x, y, color='mediumseagreen', edgecolor='black', s=100, alpha=0.3)
 
     plt.plot([-1, 0], [0, 1], linestyle='--', color='grey', linewidth=1.5)
 
-    plt.xlabel('Q- (Negative Reward Q-value)', fontsize=14)
-    plt.ylabel('Q+ (Positive Reward Q-value)', fontsize=14)
-    plt.title(title, fontsize=16, fontweight='bold')
+    plt.xlabel('Q-', fontsize=11)
+    plt.ylabel('Q+', fontsize=11)
+    plt.title(title, fontsize=12, fontweight='bold')
 
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
     plt.grid(True, linestyle=':', linewidth=0.5)
     plt.tight_layout()
+    plt.savefig(f"plots/{title}.png")
     plt.show()

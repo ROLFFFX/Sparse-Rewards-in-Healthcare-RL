@@ -63,7 +63,7 @@ if __name__ == "__main__":
     }
 
     pprint.pp(Q)
-    plot_Qs(Q_plus, Q_minus, "2 MDP fixed pi")
+    plot_Qs(Q_plus, Q_minus, "Uniform Random Break Rewards")
 
     print()
     print()
@@ -96,4 +96,4 @@ if __name__ == "__main__":
     print()
     print("pi* minus")
     pprint.pp(pi_minus)
-    plot_Qs(Q_plus, Q_minus, "2 MDP policy iter")
+    plot_Qs(Q_plus, Q_minus, "Policy Iteration Break Rewards")

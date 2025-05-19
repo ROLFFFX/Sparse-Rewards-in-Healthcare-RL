@@ -11,10 +11,10 @@ if __name__ == "__main__":
     mdp_plus = LifeGate_MDP(max_num_states=5, p_terminal=0.3, max_actions=2, seed=28, mode="+")
     mdp_minus = LifeGate_MDP(max_num_states=5, p_terminal=0.3, max_actions=2, seed=28, mode="-")
 
-    graph = mdp_plus.visualize_mdp()
-    graph.render(directory='generated-dag-plus', view=True)
-    graph = mdp_minus.visualize_mdp()
-    graph.render(directory='generated-dag-minus', view=True)
+    #graph = mdp_plus.visualize_mdp()
+    #graph.render(directory='generated-dag-plus', view=True)
+    #graph = mdp_minus.visualize_mdp()
+    #graph.render(directory='generated-dag-minus', view=True)
 
     print("--- 2 MDP's, fixed pi (uniform random) ---")
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     }
 
     pprint.pp(Q)
-    plot_Qs(Q_plus, Q_minus, "2 MDP fixed pi")
+    plot_Qs(Q_plus, Q_minus, "Uniform Random Toy MDP")
 
     print()
     print()
@@ -74,4 +74,4 @@ if __name__ == "__main__":
     print()
     print("pi* minus")
     pprint.pp(pi_minus)
-    plot_Qs(Q_plus, Q_minus, "2 MDP policy iter")
+    plot_Qs(Q_plus, Q_minus, "Policy Iteration Toy MDP")

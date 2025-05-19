@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     mdp_plus.transitions['s3'] = {'0': {'s3': (1.0, 0.0)}, '1': {'s3': (1.0, 0.0)}}
     mdp_plus.transitions['s1']['1']['s3'] = (0.48, 0.0)
-    mdp_plus.transitions['s1']['1']['recovery'] = (0.52, 0.0)
+    mdp_plus.transitions['s1']['1']['recovery'] = (0.52, 1.0)
     del mdp_plus.transitions['s1']['1']['death']
     mdp_plus.transitions['s2']['1']['recovery'] = (0.5, 1.0)
     mdp_plus.transitions['s2']['1']['s3'] = (0.5, 0.0)
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     mdp_minus.transitions['s1']['1']['s3'] = (0.48, 0.0)
     mdp_minus.transitions['s1']['1']['recovery'] = (0.52, 0.0)
     del mdp_minus.transitions['s1']['1']['death']
-    mdp_minus.transitions['s2']['1']['recovery'] = (0.5, 1.0)
+    mdp_minus.transitions['s2']['1']['recovery'] = (0.5, 0.0)
     mdp_minus.transitions['s2']['1']['s3'] = (0.5, 0.0)
 
     graph = mdp_plus.visualize_mdp()
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     }
 
     pprint.pp(Q)
-    plot_Qs(Q_plus, Q_minus, "2 MDP fixed pi")
+    plot_Qs(Q_plus, Q_minus, "Uniform Random Break Absorption")
 
     print()
     print()
@@ -95,4 +95,4 @@ if __name__ == "__main__":
     print()
     print("pi* minus")
     pprint.pp(pi_minus)
-    plot_Qs(Q_plus, Q_minus, "2 MDP policy iter")
+    plot_Qs(Q_plus, Q_minus, "Policy Iteration Break Absorption")
