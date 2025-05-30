@@ -319,6 +319,22 @@ class LifeGate_MDP:
 
         return Q
 
+def add_Qs(q1, q2):
+    result = {}
+    for state in q1:
+        result[state] = {}
+        for action in q1[state]:
+            result[state][action] = q1[state][action] + q2[state][action]
+    return result
+
+def subtract_Qs(q1, q2):
+    result = {}
+    for state in q1:
+        result[state] = {}
+        for action in q1[state]:
+            result[state][action] = q1[state][action] - q2[state][action]
+    return result
+
 
 def plot_Vs(v_plus, v_minus, title):
     sns.set(style="whitegrid")
@@ -343,7 +359,7 @@ def plot_Vs(v_plus, v_minus, title):
     plt.tight_layout()
     plt.show()
 
-def plot_Qs(q_plus, q_minus, title, size=(3, 3)):
+def plot_Qs(q_plus, q_minus, title, size=(3, 3), show=False):
     """
     Scatter plot comparing Q-values from two MDP variants (e.g., positive vs negative reward settings).
     
@@ -371,13 +387,102 @@ def plot_Qs(q_plus, q_minus, title, size=(3, 3)):
 
     plt.plot([-1, 0], [0, 1], linestyle='--', color='grey', linewidth=1.5)
 
-    plt.xlabel('Q-', fontsize=11)
-    plt.ylabel('Q+', fontsize=11)
-    plt.title(title, fontsize=12, fontweight='bold')
+    plt.xlabel('$Q_-$', fontsize=11)
+    plt.ylabel('$Q_+$', fontsize=11)
+    # plt.title(title, fontsize=12, fontweight='bold')
 
     plt.xticks(fontsize=10)
     plt.yticks(fontsize=10)
     plt.grid(True, linestyle=':', linewidth=0.5)
     plt.tight_layout()
-    plt.savefig(f"plots/{title}.png")
-    plt.show()
+    plt.savefig(f"plots/{title}.pdf", format='pdf', bbox_inches='tight')
+
+    if show:
+        plt.show()
+
+def plot_mixed(q_mixed, q_pm, title, size=(3, 3), show=False):
+    sns.set(style="whitegrid")
+    x, y, labels = [], [], []
+
+    for state in q_mixed:
+        if state in ('death', 'recovery'):
+            continue
+        for action in q_pm[state]:
+            if state in q_mixed and action in q_pm[state]:
+                x_val = q_pm[state][action]
+                y_val = q_mixed[state][action]
+                x.append(x_val)
+                y.append(y_val)
+                labels.append(f"{state}, a={action}")
+
+    plt.figure(figsize=size)
+    plt.scatter(x, y, color='mediumseagreen', edgecolor='black', s=100, alpha=0.3)
+
+    plt.plot([-1, 1], [-1, 1], linestyle='--', color='grey', linewidth=1.5)
+
+    plt.xlabel('$Q_{\pm}$', fontsize=11)
+    plt.ylabel('$Q_+ + Q_-$', fontsize=11)
+    # plt.title(title, fontsize=12, fontweight='bold')
+
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    plt.grid(True, linestyle=':', linewidth=0.5)
+    plt.tight_layout()
+    plt.savefig(f"plots/{title}.pdf", format='pdf', bbox_inches='tight')
+
+    if show:
+        plt.show() 
+
+def run_lifegate(mdp_plus, mdp_minus, title_base):
+    print(f"-----uniform random {title_base}-----")
+
+    Q_plus = mdp_plus.compute_Qs()
+    Q_minus = mdp_minus.compute_Qs()
+
+    plot_Qs(Q_plus, Q_minus, f"uniform_random_{title_base}")
+
+    print()
+    print()
+
+    print(f"-----policy iteration {title_base}-----")
+
+    print()
+    print()
+
+    V_plus, pi_plus = mdp_plus.policy_iter()
+    V_minus, pi_minus = mdp_minus.policy_iter()
+    Q_plus = mdp_plus.compute_Qs(pi_plus)
+    Q_minus = mdp_minus.compute_Qs(pi_minus)
+
+    plot_Qs(Q_plus, Q_minus, f"policy_iter_{title_base}")
+
+def run_mixed(mdp_plus, mdp_minus, mdp_mixed, title_base):
+    print(f"-----uniform random mixed-----")
+
+    Q_plus = mdp_plus.compute_Qs()
+    Q_minus = mdp_minus.compute_Qs()
+    Q_mixed = mdp_mixed.compute_Qs()
+
+    Q_ppm = add_Qs(Q_plus, Q_minus)
+
+    plot_mixed(Q_mixed, Q_ppm, f"uniform_random_{title_base}", show=True)
+
+    print()
+    print()
+
+    print(f"-----policy iteration mixed-----")
+
+    print()
+    print()
+
+    V_plus, pi_plus = mdp_plus.policy_iter()
+    V_minus, pi_minus = mdp_minus.policy_iter()
+    V_mixed, pi_mixed = mdp_mixed.policy_iter()
+
+    Q_plus = mdp_plus.compute_Qs(pi_plus)
+    Q_minus = mdp_minus.compute_Qs(pi_minus)
+    Q_mixed = mdp_mixed.compute_Qs(pi_mixed)
+
+    Q_ppm = add_Qs(Q_plus, Q_minus)
+
+    plot_mixed(Q_mixed, Q_ppm, f"policy_iter_{title_base}", show=True)
