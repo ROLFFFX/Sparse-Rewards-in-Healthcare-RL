@@ -5,6 +5,7 @@ import pprint
 
 def run_toy_mdp():
     mdp_plus = LifeGate_MDP(max_num_states=5, p_terminal=0.3, max_actions=2, seed=28, mode="+")
+    pprint.pp(mdp_plus.transitions)
     mdp_minus = LifeGate_MDP(max_num_states=5, p_terminal=0.3, max_actions=2, seed=28, mode="-")
     mdp_mixed = LifeGate_MDP(max_num_states=5, p_terminal=0.3, max_actions=2, seed=28, mode="+-") 
 

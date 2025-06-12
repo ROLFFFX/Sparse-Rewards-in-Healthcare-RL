@@ -3,6 +3,7 @@ import numpy as np
 from graphviz import Digraph
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pprint
 
 class LifeGate_MDP:
     def __init__(self, max_num_states=20, p_terminal=0.2, max_actions=2, seed=42, mode="+-"):
@@ -278,7 +279,7 @@ class LifeGate_MDP:
                     q_value = 0.0
                     for next_state, (prob, reward) in self.transitions[state][a].items():
                         q_value += prob * (reward + gamma * V[next_state])
-                    if q_value > best_value:
+                    if q_value >= best_value:
                         best_value = q_value
                         best_action = a
 
@@ -318,6 +319,46 @@ class LifeGate_MDP:
                 Q[state][action] = q_value
 
         return Q
+
+    def get_terminal_probabilities(self, policy, state, max_depth=50, depth=0):
+        """
+        Returns the probabilities of transitioning to 'death' and 'recovery' 
+        from the given state using the given policy.
+        
+        Parameters:
+            transition_graph (dict): Nested dict representing the transitions.
+            state (str): The current state.
+            policy (dict): Maps each state to an action (as int or str).
+
+        Returns:
+            (float, float): Tuple of (death_probability, recovery_probability)
+        """
+        if depth > max_depth:
+            return 0.0, 0.0
+
+        action = policy[state]
+        if action is None:
+            raise ValueError(f"No action found in policy for state '{state}'")
+
+        transitions = self.transitions.get(state, {}).get(str(action), {})
+
+        death_prob = 0.0
+        recovery_prob = 0.0
+
+        for target_state in transitions.keys():
+            prob, reward = transitions.get(target_state)
+            if target_state == 'death':
+                death_prob += prob
+            elif target_state == 'recovery':
+                recovery_prob += prob
+            else:
+                target_recovery, target_death = self.get_terminal_probabilities(policy, target_state, depth=depth+1)
+                recovery_prob += prob * target_recovery
+                death_prob += prob * target_death
+
+        return recovery_prob, death_prob
+
+
 
 def add_Qs(q1, q2):
     result = {}
@@ -433,6 +474,20 @@ def plot_mixed(q_mixed, q_pm, title, size=(3, 3), show=False):
     if show:
         plt.show() 
 
+def compare_pis(p1, p2, mdp1, mdp2):
+    for state in p1:
+        if p1.get(state) != p2.get(state):
+            print()
+            print("mismatch: ", state, " - action p1 ", p1.get(state), " action p2 ", p2.get(state))
+            plus_survival_prob, plus_death_prob = mdp1.get_terminal_probabilities(p2, state)
+            minus_survival_prob, minus_death_prob = mdp2.get_terminal_probabilities(p2, state)
+            print("Transition probabilities for mdp_plus: survival - ", plus_survival_prob, " death - ", plus_death_prob)
+            print("Transition probabilities for mdp_minus: survival - ", minus_survival_prob, " death - ", minus_death_prob)
+            print()
+            
+
+    return sum(p1.get(state) != p2.get(state) for state in p1)
+
 def run_lifegate(mdp_plus, mdp_minus, title_base):
     print(f"-----uniform random {title_base}-----")
 
@@ -454,6 +509,8 @@ def run_lifegate(mdp_plus, mdp_minus, title_base):
     Q_plus = mdp_plus.compute_Qs(pi_plus)
     Q_minus = mdp_minus.compute_Qs(pi_minus)
 
+    print("number of mismatching actions plus vs minus", title_base, ": ", compare_pis(pi_plus, pi_minus, mdp_plus, mdp_minus))
+
     plot_Qs(Q_plus, Q_minus, f"policy_iter_{title_base}")
 
 def run_mixed(mdp_plus, mdp_minus, mdp_mixed, title_base):
@@ -465,7 +522,7 @@ def run_mixed(mdp_plus, mdp_minus, mdp_mixed, title_base):
 
     Q_ppm = add_Qs(Q_plus, Q_minus)
 
-    plot_mixed(Q_mixed, Q_ppm, f"uniform_random_{title_base}", show=True)
+    plot_mixed(Q_mixed, Q_ppm, f"uniform_random_{title_base}")
 
     print()
     print()
@@ -485,4 +542,8 @@ def run_mixed(mdp_plus, mdp_minus, mdp_mixed, title_base):
 
     Q_ppm = add_Qs(Q_plus, Q_minus)
 
-    plot_mixed(Q_mixed, Q_ppm, f"policy_iter_{title_base}", show=True)
+    print("number of mismatching actions plus vs mixed", title_base, ": ", compare_pis(pi_plus, pi_mixed, mdp_plus, mdp_mixed))
+    
+    print("number of mismatching actions minus vs mixed", title_base, ": ", compare_pis(pi_minus, pi_mixed, mdp_plus, mdp_mixed))
+
+    plot_mixed(Q_mixed, Q_ppm, f"policy_iter_{title_base}")
