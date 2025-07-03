@@ -1,0 +1,29 @@
+// LifeGate-MDP
+digraph {
+	rankdir=LR
+	death [label=death fillcolor=red style=filled]
+	recovery [label=recovery fillcolor=green style=filled]
+	s0 [label=s0 fillcolor=lightgreen style=filled]
+	s1 [label=s1 fillcolor=lightgreen style=filled]
+	s2 [label=s2 fillcolor=lightgreen style=filled]
+	death -> death [label="0: 1.00"]
+	death -> death [label="1: 1.00"]
+	recovery -> recovery [label="0: 1.00"]
+	recovery -> recovery [label="1: 1.00"]
+	s0 -> s1 [label="0: 1.00"]
+	s0 -> s2 [label="1: 1.00"]
+	s1 -> death [label="0: 1.00"]
+	s1 -> death [label="1: 0.48"]
+	s1 -> recovery [label="1: 0.52"]
+	s2 -> death [label="0: 1.00"]
+	s2 -> recovery [label="1: 1.00"]
+	subgraph cluster_legend {
+		label=Legend style=solid
+		rank=same
+		L_rescue [label="Rescue State" fillcolor=lightgreen style=filled]
+		L_death [label="Death (Terminal)" fillcolor=red fontcolor=white style=filled]
+		L_recovery [label="Recovery (Terminal)" fillcolor=green fontcolor=white style=filled]
+		L_rescue -> L_death [style=invis]
+		L_death -> L_recovery [style=invis]
+	}
+}
