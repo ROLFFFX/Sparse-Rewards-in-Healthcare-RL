@@ -1,7 +1,25 @@
 import numpy as np
-import matplotlib as plt
 import seaborn as sns
 import pprint
+import matplotlib.pyplot as plt
+
+deadends_x = range(0,0)
+deadends_y = range(0,0)
+# invalids = [(0, 0), (2, 1), (2, 2)]
+# survivals = [(0, 1), (0, 2)]
+# mortalities = [(0, 3), (1, 3), (2, 3), (3, 3)]
+
+# counter example: survival is unreachable (right column is death)
+invalids = [(0,0), (2,0), (2,1), (2,2), (0,1), (0,2), (0,3), (3,3), (3,0), (3,1), (3,2), (2,3)]
+survivals = [] 
+mortalities = [(1,3)]
+
+
+# counter example 2
+# invalids = [(0,0),(0,1), (0,2), (3,0), (3,1), (3,2), (0,3),(3,3)]
+# survivals = [] 
+# mortalities = [ (1,3), (2,3)]
+
 
 def amax(arr):
     if len(arr) == 0:
@@ -10,7 +28,7 @@ def amax(arr):
     return [i for i, val in enumerate(arr) if np.isclose(val, max_value)]
 
 def policy_to_chars(P):
-    n = 10
+    n = 4
     char_policy = []
     for i in range(n):
         char_policy.append([])
@@ -33,7 +51,7 @@ def policy_to_chars(P):
 
 def print_policy(P):
     char_policy = policy_to_chars(P)
-    n = 10
+    n = 4
 
     print('\033[4m', end='')
     print("".join("     " for _ in range(n)))
@@ -56,7 +74,7 @@ def V_index(s, n):
 
 def gridworld(mode='mixed', slip_prob=0.0):
     P = {}
-    n = 10
+    n = 4
     actions = [(-1, 0), (0, 1), (1, 0), (0, -1)]  # north, east, south, west
     
     def state_index(x, y):
@@ -65,11 +83,7 @@ def gridworld(mode='mixed', slip_prob=0.0):
     def out_of_bounds(x, y):
         return x < 0 or x >= n or y < 0 or y >= n
 
-    deadends_x = range(5, 10)
-    deadends_y = range(5, 9)
-    invalids = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (5, 1), (5, 2), (5, 3), (5, 4)]
-    survivals = [(0, 5), (0, 6), (0, 7)]
-    mortalities = [(0, 8), (0, 9), (1, 9), (2, 9), (3, 9), (4, 9), (5, 9), (6, 9), (7, 9), (8, 9), (9, 9)]
+
 
     for x in range(n):
         for y in range(n):
@@ -123,7 +137,7 @@ def gridworld(mode='mixed', slip_prob=0.0):
     return P
 
 def policy_eval(P, policy=None, theta=0.0001, gamma=0.9):
-    n = 10
+    n = 4
     V = np.zeros((n, n))
 
     if policy is None:
@@ -152,76 +166,6 @@ def policy_eval(P, policy=None, theta=0.0001, gamma=0.9):
 
     return V
 
-def policy_iter(P, theta=0.0001, gamma=0.9):
-    n = 10
-    policy = np.full((n*n, 4), 0.25)
-    
-    while True:
-        policy_stable = True
-        V = policy_eval(P, policy, theta, gamma)
-
-        for s in range(n*n):
-            old_action = np.argmax(policy[s])
-            Q = np.zeros(4)
-
-            for a in range(4):
-                for prob, next_state, reward in P[s][a]:
-                    next_x, next_y = V_index(next_state, n)
-                    Q[a] += prob * (reward + gamma * V[next_x][next_y])
-
-            best_actions = amax(Q)
-            new_policy = np.zeros(4)
-            for a in best_actions:
-                new_policy[a] = 1/len(best_actions)
-            assert np.sum(new_policy) == 1, f"Q = {Q}, new_pi = {new_policy}, best actions = {best_actions}"
-
-            if not np.array_equal(policy[s], new_policy):
-                policy_stable = False
-            policy[s] = new_policy
-
-        if policy_stable:
-            break
-
-    return V, policy
-
-def value_iter(P, theta=0.0001, gamma=0.9):
-    n = 10
-    V = np.zeros((n, n))
-    
-    while True:
-        delta = 0
-        for s in range(n*n):
-            x, y = V_index(s)
-            v = V[x][y]
-            
-            Q = np.zeros(4)
-            for a in range(4):
-                for prob, next_state, reward in P[s][a]:
-                    next_x, next_y = V_index(next_state)
-                    Q[a] += prob * (reward + gamma * V[next_x][next_y])
-            V[x][y] = np.max(Q)
-
-            delta = max(delta, abs(v - V[x][y]))
-
-        if delta < theta:
-            break
-
-    policy = np.zeros((n*n, 4))
-    for s in range(n*n):
-        Q = np.zeros(4)
-        for a in range(4):
-            for prob, next_state, reward in P[s][a]:
-                next_x, next_y = V_index(next_state)
-                Q[a] += prob * (reward + gamma * V[next_x][next_y])
-
-        best_actions = amax(Q)
-        new_policy = np.zeros(4)
-        for a in best_actions:
-            new_policy[a] = 1/len(best_actions)
-        policy[s] = new_policy
-
-    return V, policy
-
 def gridworld_ep(survival=True, slip_prob=0.2):
     P = gridworld(survival, slip_prob)
     A_prime = [(0.0, 21, 0)]
@@ -238,11 +182,8 @@ def add_Vs(V1, V2):
 def subtract_Vs(V1, V2):
     return [x - y for x, y in zip(V1, V2)]
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
 
-def plot_value_heatmap(V, save_path=None, show=True):
+def plot_value_heatmap(V, save_path=None, show=False):
     """
     Plots a heatmap of the value function.
 
@@ -267,7 +208,7 @@ def plot_value_heatmap(V, save_path=None, show=True):
     else:
         plt.close()
 
-def visualize_policy(prob_array, grid_shape=(10, 10), title="policy_vector_field"):
+def visualize_policy(prob_array, grid_shape=(4, 4), title="policy_vector_field"):
     # Directions mapping: N, E, S, W
     dir_map = {'N': (0, -1), 'E': (1, 0), 'S': (0, 1), 'W': (-1, 0)}
     directions = ['N', 'E', 'S', 'W']
@@ -298,17 +239,17 @@ def visualize_policy(prob_array, grid_shape=(10, 10), title="policy_vector_field
 
     plt.gca().set_aspect('equal')
     plt.savefig(f"{title}.pdf", format="pdf")
-    plt.show()
+    # plt.show()
 
 
 def visualize_gridworld(title):
-    invalids = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (5, 1), (5, 2), (5, 3), (5, 4)]
-    survivals = [(0, 5), (0, 6), (0, 7)]
-    mortalities = [(0, 8), (0, 9), (1, 9), (2, 9), (3, 9), (4, 9), (5, 9), (6, 9), (7, 9), (8, 9), (9, 9)]
-    deadends_x = range(5, 9)
-    deadends_y = range(5, 10)
+    # deadends_x = range(0,0)
+    # deadends_y = range(0,0)
+    # invalids = [(0, 0), (2, 1), (2, 2)]
+    # survivals = [(0, 1), (0, 2)]
+    # mortalities = [(0, 3), (1, 3), (2, 3), (3, 3)]
 
-    grid_size = (10, 10)
+    grid_size = (4, 4)
 
     grid_colors = np.full(grid_size, 'white', dtype=object)
     
@@ -341,70 +282,118 @@ def visualize_gridworld(title):
     ax.set_aspect('equal')
 
     plt.savefig(f"{title}.pdf", format="pdf")
-    plt.show()
+    # plt.show()
 
-def cross_validation():
-    g = 0.999
-    survival = gridworld(mode="survival")
-    avoidance = gridworld(mode="avoidance")
-    mixed = gridworld()
-    survival_V, survival_pi = policy_iter(survival, gamma=g)
-    avoidance_V, avoidance_pi = policy_iter(avoidance, gamma=g)
-    mixed_V, mixed_pi = policy_iter(mixed, gamma=g)
-    def policy_exact_match(pi1, pi2):
-        n_states = pi1.shape[0] # not excluding the boundaries and terminal/ded states
-        exact = 0
-        print(n_states)
-        for s in range(n_states):
-            best1 = set(amax(pi1[s]))
-            best2 = set(amax(pi2[s]))
-            if best1 == best2:
-                exact += 1
-
-        return exact / n_states
-    print("Exact match survival vs avoidance:", policy_exact_match(survival_pi, avoidance_pi))
-    print("Exact match mixed vs avoidance:", policy_exact_match(mixed_pi, avoidance_pi))
-    print("Exact match mixed vs survival:", policy_exact_match(mixed_pi, survival_pi))
-    pass
+def value_iter_deter(P, theta=0.0001, gamma=0.9):
+    n = 4
+    V = np.zeros((n, n))
     
+    while True:
+        delta = 0
+        for s in range(n*n):
+            x, y = V_index(s)
+            v = V[x][y]
+            
+            Q = np.zeros(4)
+            for a in range(4):
+                for prob, next_state, reward in P[s][a]:
+                    next_x, next_y = V_index(next_state)
+                    Q[a] += prob * (reward + gamma * V[next_x][next_y])
+
+            # Deterministic: choose the first action in sorted order if ties
+            max_q = np.max(Q)
+            best_actions = amax(Q)
+            chosen_action = min(best_actions)  # always pick the smallest index
+
+            V[x][y] = Q[chosen_action]
+
+            delta = max(delta, abs(v - V[x][y]))
+
+        if delta < theta:
+            break
+
+    policy = np.zeros((n*n, 4))
+    for s in range(n*n):
+        Q = np.zeros(4)
+        for a in range(4):
+            for prob, next_state, reward in P[s][a]:
+                next_x, next_y = V_index(next_state)
+                Q[a] += prob * (reward + gamma * V[next_x][next_y])
+
+        best_actions = amax(Q)
+        chosen_action = min(best_actions)
+        new_policy = np.zeros(4)
+        new_policy[chosen_action] = 1.0
+        policy[s] = new_policy
+
+    return V, policy
+
+def policy_iter_deter(P, theta=0.0001, gamma=0.9):
+    n = 4
+    policy = np.zeros((n*n, 4))
+    final_policy = np.zeros((n*n, 4))  # <- to record all optimal actions
+
+    # Deterministic: initialize policy to always choose the first action
+    for s in range(n*n):
+        policy[s][0] = 1.0
+
+    while True:
+        policy_stable = True
+        V = policy_eval(P, policy, theta, gamma)
+
+        for s in range(n*n):
+            old_action = np.argmax(policy[s])
+            Q = np.zeros(4)
+
+            for a in range(4):
+                for prob, next_state, reward in P[s][a]:
+                    next_x, next_y = V_index(next_state, n)
+                    Q[a] += prob * (reward + gamma * V[next_x][next_y])
+
+            best_actions = amax(Q)
+
+            # For improvement, pick a single consistent action
+            chosen_action = min(best_actions)  # deterministic tie-breaking
+
+            new_policy = np.zeros(4)
+            new_policy[chosen_action] = 1.0
+
+            if not np.array_equal(policy[s], new_policy):
+                policy_stable = False
+
+            policy[s] = new_policy
+
+            # For final output: record all optimal actions
+            final_policy[s] = np.zeros(4)
+            for a in best_actions:
+                final_policy[s][a] = 1.0
+
+        if policy_stable:
+            break
+
+    return V, final_policy
+
+
+
 def main():
-        g = 0.9
+        g = 0.99
         visualize_gridworld("gridworld")
-        print()
-        print("**********")
-        print("***** GAMMA =", g, "*****")
-        print("**********")
-        print()
+
         survival = gridworld(mode="survival")
         avoidance = gridworld(mode="avoidance")
         mixed = gridworld()
 
-        print("***** survival *****")
-        survival_V, survival_pi = policy_iter(survival, gamma=g)
+        survival_V, survival_pi = policy_iter_deter(survival, gamma=g)
         visualize_policy(survival_pi, title='plus_policy')
-        print()
-        print("***** avoidance *****")
-        avoidance_V,  avoidance_pi= policy_iter(avoidance, gamma=g)
-        visualize_policy(avoidance_pi, title='minus_policy')
-        print()
-        print("***** mixed *****")
-        mixed_V, mixed_pi = policy_iter(mixed, gamma=g)
-        visualize_policy(mixed_pi, title="mixed_policy")
-        print()
-        print("***** survival + avoidance *****")
-        s_plus_a = add_Vs(survival_V, avoidance_V)
-        print()
-        print("***** mixed - s+a *****")
-        subtracted = subtract_Vs(mixed_V, s_plus_a)
-        plot_value_heatmap(subtracted, save_path="gridworld_add.pdf")
 
-        print()
-        print()
-        print("***** + - - *****")
-        s_minus_a = subtract_Vs(survival_V, avoidance_V)
-        plot_value_heatmap(s_minus_a, save_path="gridworld_subtract.pdf")
+        avoidance_V,  avoidance_pi= policy_iter_deter(avoidance, gamma=g)
+        visualize_policy(avoidance_pi, title='minus_policy')
+
+        mixed_V, mixed_pi = policy_iter_deter(mixed, gamma=g)
+        visualize_policy(mixed_pi, title="mixed_policy")
+
+        
 
 
 if __name__ == "__main__":
-    # main()
-    cross_validation()
+    main()

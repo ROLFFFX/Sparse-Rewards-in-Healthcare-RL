@@ -255,22 +255,21 @@ class LifeGate_MDP:
         return V
     
     def policy_iter_deter(self, theta=1e-4, gamma=1.0):
-        """
-        Performs deterministic policy iteration with stable tie-breaking.
-        Returns the value function V and deterministic policy pi.
-        """
         policy = {}
+        final_policy = {}
+
         for state in self.states:
             if state in ("death", "recovery"):
                 continue
             actions = sorted(self.transitions[state].keys())
             if actions:
-                policy[state] = actions[0]  # Initialize with first sorted action
+                policy[state] = actions[0]
+                final_policy[state] = [actions[0]]
 
         while True:
             V = self.policy_eval(policy, theta=theta, gamma=gamma)
-
             policy_stable = True
+
             for state in self.states:
                 if state in ("death", "recovery"):
                     continue
@@ -284,22 +283,25 @@ class LifeGate_MDP:
                         prob * (reward + gamma * V[next_state])
                         for next_state, (prob, reward) in self.transitions[state][a].items()
                     )
-                    if q_value > best_value + 1e-8:
+                    if q_value > best_value + theta:
                         best_value = q_value
                         best_actions = [a]
-                    elif abs(q_value - best_value) < 1e-8:
+                    elif abs(q_value - best_value) < theta:
                         best_actions.append(a)
 
-                chosen_action = best_actions[0]  # tie-break deterministically
+                chosen_action = best_actions[0]
                 if old_action != chosen_action:
                     policy_stable = False
                     policy[state] = chosen_action
+
+                final_policy[state] = best_actions
 
             if policy_stable:
                 break
 
         V = {k: round(v, 8) for k, v in V.items()}
-        return V, policy
+        return V, final_policy
+
 
 
     def policy_iter(self, theta=0.0001, gamma=1.0):
