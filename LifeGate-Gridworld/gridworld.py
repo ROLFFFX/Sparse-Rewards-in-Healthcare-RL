@@ -368,43 +368,43 @@ def cross_validation():
     pass
     
 def main():
-        g = 0.9
+        g = 0.99
         visualize_gridworld("gridworld")
         print()
         print("**********")
         print("***** GAMMA =", g, "*****")
         print("**********")
         print()
-        survival = gridworld(mode="survival")
-        avoidance = gridworld(mode="avoidance")
-        mixed = gridworld()
+        survival = gridworld(mode="survival", slip_prob=0.3)
+        avoidance = gridworld(mode="avoidance", slip_prob=0.3)
+        mixed = gridworld(slip_prob=0.3)
 
         print("***** survival *****")
         survival_V, survival_pi = policy_iter(survival, gamma=g)
-        visualize_policy(survival_pi, title='plus_policy')
+        visualize_policy(survival_pi, title='plus_policy_slip')
         print()
         print("***** avoidance *****")
         avoidance_V,  avoidance_pi= policy_iter(avoidance, gamma=g)
-        visualize_policy(avoidance_pi, title='minus_policy')
+        visualize_policy(avoidance_pi, title='minus_policy_slip')
         print()
         print("***** mixed *****")
         mixed_V, mixed_pi = policy_iter(mixed, gamma=g)
-        visualize_policy(mixed_pi, title="mixed_policy")
+        visualize_policy(mixed_pi, title="mixed_policy_slip")
         print()
         print("***** survival + avoidance *****")
         s_plus_a = add_Vs(survival_V, avoidance_V)
         print()
         print("***** mixed - s+a *****")
         subtracted = subtract_Vs(mixed_V, s_plus_a)
-        plot_value_heatmap(subtracted, save_path="gridworld_add.pdf")
+        plot_value_heatmap(subtracted, save_path="gridworld_add_slip.pdf")
 
         print()
         print()
         print("***** + - - *****")
         s_minus_a = subtract_Vs(survival_V, avoidance_V)
-        plot_value_heatmap(s_minus_a, save_path="gridworld_subtract.pdf")
+        plot_value_heatmap(s_minus_a, save_path="gridworld_subtract_slip.pdf")
 
 
 if __name__ == "__main__":
-    # main()
+    main()
     cross_validation()
