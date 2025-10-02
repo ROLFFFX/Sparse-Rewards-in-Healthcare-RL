@@ -4,3 +4,10 @@
 *.pyc
 *.pyo
 __pycache__/
+
+/physionet.org
+
+/mimic-sepsis/RL-Off-by-a-Beat-main
+/mimic-sepsis/preprocessing
+/mimic-sepsis/data
+/ICU-Sepsis
