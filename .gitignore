@@ -9,5 +9,6 @@ __pycache__/
 
 /mimic-sepsis/RL-Off-by-a-Beat-main
 /mimic-sepsis/preprocessing
+/mimic-sepsis/pipeline/generate_reward_variants.ipynb
 /mimic-sepsis/data
 /ICU-Sepsis
