@@ -12,3 +12,5 @@ __pycache__/
 /mimic-sepsis/pipeline/generate_reward_variants.ipynb
 /mimic-sepsis/data
 /ICU-Sepsis
+
+draft.md
