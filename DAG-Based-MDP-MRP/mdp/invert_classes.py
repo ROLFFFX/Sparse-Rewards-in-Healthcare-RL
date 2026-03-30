@@ -3,37 +3,88 @@ from lifegate_mdp import plot_Qs
 from lifegate_mdp import compare_pis
 import matplotlib as plt
 import pprint
+import copy
+
+def flip_terminal_outcomes(mdp):
+    mode = 2 if mdp.mode == "+-" else 1 # used for arithmetic to calculate new reward
+    flipped = {}
+
+    for state, actions in mdp.transitions.items():
+        if state == "death":
+            new_state = "recovery"
+        elif state == "recovery":
+            new_state = "death"
+        else:
+            new_state = state
+
+        flipped[new_state] = {}
+
+        for action, outcomes in actions.items():
+            flipped[new_state][action] = {}
+            for next_state, (prob, reward) in outcomes.items():
+                if next_state == "death":
+                    new_next_state = "recovery"
+                    new_reward = reward + mode if state != "death" else 0.0
+                elif next_state == "recovery":
+                    new_next_state = "death"
+                    new_reward = reward - mode if state != "recovery" else 0.0
+                else:
+                    new_next_state = next_state
+                    new_reward = reward
+
+                flipped[new_state][action][new_next_state] = (prob, new_reward)
+    return flipped
+
+def new_flipped_mdp(mdp):
+    new_mdp = copy.deepcopy(mdp)
+    new_mdp.transitions = flip_terminal_outcomes(mdp)
+    new_mdp.tagging_dag()
+    return new_mdp
+
 
 def invert_classes_break_gamma():
-    mdp_plus = LifeGate_MDP(max_num_states=200, p_terminal=0.7, max_actions=2, seed=28, mode="+")
-    mdp_minus = LifeGate_MDP(max_num_states=200, p_terminal=0.7, max_actions=2, seed=28, mode="-")
-    mdp_mixed = LifeGate_MDP(max_num_states=200, p_terminal=0.7, max_actions=2, seed=28, mode="+-")
+    s = 1
 
-    dot = mdp_mixed.visualize_mdp(title="inverrted_classes_mdp")
+    mdp_plus_pos = LifeGate_MDP(max_num_states=200, p_terminal=0.01, max_actions=2, seed=s, mode="+")
+    mdp_minus_pos = LifeGate_MDP(max_num_states=200, p_terminal=0.01, max_actions=2, seed=s, mode="-")
+    mdp_mixed_pos = LifeGate_MDP(max_num_states=200, p_terminal=0.01, max_actions=2, seed=s, mode="+-")
 
-    dot.render("inverted_classes_mdp", format="pdf", cleanup=True)
+    mdp_plus_neg = new_flipped_mdp(mdp_plus_pos)
+    mdp_minus_neg = new_flipped_mdp(mdp_minus_pos)
+    mdp_mixed_neg = new_flipped_mdp(mdp_mixed_pos)
 
     for i in range(1, 4):
         g = 1.0 - i/10.0
 
-        Q_plus = mdp_plus.compute_Qs(gamma=g)
-        Q_minus = mdp_minus.compute_Qs(gamma=g)
-        Q_mixed = mdp_mixed.compute_Qs(gamma=g)
+        Q_plus_pos = mdp_plus_pos.compute_Qs(gamma=g)
+        Q_minus_pos = mdp_minus_pos.compute_Qs(gamma=g)
+        Q_mixed_pos = mdp_mixed_pos.compute_Qs(gamma=g)
 
-        plot_Qs(Q_plus, Q_minus, f"uniform_random_break_gamma_inverted_classes{g}")
+        Q_plus_neg = mdp_plus_neg.compute_Qs(gamma=g)
+        Q_minus_neg = mdp_minus_neg.compute_Qs(gamma=g)
+        Q_mixed_neg = mdp_mixed_neg.compute_Qs(gamma=g)
 
-        V_plus, pi_plus = mdp_plus.policy_iter(gamma=g)
-        V_minus, pi_minus = mdp_minus.policy_iter(gamma=g)
-        V_plus = mdp_plus.policy_eval(pi_plus)
-        V_minus = mdp_minus.policy_eval(pi_minus)
-        V_mixed, pi_mixed = mdp_mixed.policy_iter(gamma=g)
-        Q_plus = mdp_plus.compute_Qs(pi_plus, gamma=g)
-        Q_minus = mdp_minus.compute_Qs(pi_minus, gamma=g)
+        plot_Qs(Q_plus_pos, Q_minus_pos, f"uniform_random_positive_class{g}")
+        plot_Qs(Q_plus_neg, Q_minus_neg, f"uniform_random_negative_class{g}")
 
-        plot_Qs(Q_plus, Q_minus, f"policy_iter_break_gamma_inverted_classes{g}")
+        V_plus, pi_plus = mdp_plus_pos.policy_iter(gamma=g)
+        V_minus, pi_minus = mdp_minus_pos.policy_iter(gamma=g)
+        V_plus = mdp_plus_pos.policy_eval(pi_plus)
+        V_minus = mdp_minus_pos.policy_eval(pi_minus)
+        V_mixed, pi_mixed = mdp_mixed_pos.policy_iter(gamma=g)
+        Q_plus = mdp_plus_pos.compute_Qs(pi_plus, gamma=g)
+        Q_minus = mdp_minus_pos.compute_Qs(pi_minus, gamma=g)
 
-        print("number of mismatched actions for plus vs minus gamma = ", g, ": ", compare_pis(pi_plus, pi_minus, mdp_plus, mdp_minus))
-        print("number of mismatched actions for plus vs mixed gamma = ", g, ": ", compare_pis(pi_plus, pi_mixed, mdp_plus, mdp_mixed))
-        print("number of mismatched actions for minus vs mixed gamma = ", g, ": ", compare_pis(pi_minus, pi_mixed, mdp_minus, mdp_mixed))
+        plot_Qs(Q_plus, Q_minus, f"policy_iter_positive_class{g}")
+
+        V_plus, pi_plus = mdp_plus_neg.policy_iter(gamma=g)
+        V_minus, pi_minus = mdp_minus_neg.policy_iter(gamma=g)
+        V_plus = mdp_plus_neg.policy_eval(pi_plus)
+        V_minus = mdp_minus_neg.policy_eval(pi_minus)
+        V_mixed, pi_mixed = mdp_mixed_neg.policy_iter(gamma=g)
+        Q_plus = mdp_plus_neg.compute_Qs(pi_plus, gamma=g)
+        Q_minus = mdp_minus_neg.compute_Qs(pi_minus, gamma=g)
+
+        plot_Qs(Q_plus, Q_minus, f"policy_iter_negative_class{g}")
 
 invert_classes_break_gamma()

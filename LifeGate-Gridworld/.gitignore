@@ -1,0 +1,21 @@
+# -----------------------------
+# Python Compilation Artifacts
+# -----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# -----------------------------
+# Generated Outputs & Data
+# -----------------------------
+plots_asym/
+plots_break_asms/
+plots_scaling/
+
+# Ignore generated PDFs
+*.pdf
+
+# -----------------------------
+# OS Generated Files
+# -----------------------------
+.DS_Store
