@@ -4,6 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from gridworld import get_gridworld, value_iter
 
+plt.rcParams.update({
+    'font.size': 18,          # Base global font size
+    'axes.titlesize': 22,     # Main title size
+    'axes.labelsize': 18,     # X and Y axis label size
+    'xtick.labelsize': 16,    # X axis tick labels
+    'ytick.labelsize': 16,    # Y axis tick labels
+    'legend.fontsize': 14,    # Legend text size
+    'lines.linewidth': 3,     # Thicker lines so they don't vanish when scaled
+    'figure.autolayout': True # Prevents labels from getting cut off at the edges
+})
+
 PLOT_DIR = "plots_asym"
 os.makedirs(PLOT_DIR, exist_ok=True)
 
@@ -32,19 +43,21 @@ def plot_similarity_trajectory(similarities, steps, exp_suffix=""):
     plt.figure(figsize=(10, 6))
     x_axis = np.linspace(0, 100, steps + 1)
     
-    plt.plot(x_axis, similarities['seek'], label='Similarity to (1, 0) [Survival]', color='blue', linewidth=2)
-    plt.plot(x_axis, similarities['mixed'], label='Similarity to (1, -1) [Mixed]', color='purple', linewidth=2)
-    plt.plot(x_axis, similarities['avoid'], label='Similarity to (0, -1) [Avoidance]', color='red', linewidth=2)
+    plt.plot(x_axis, similarities['seek'], label='Similarity to (1, 0) [Survival]', color='blue')
+    plt.plot(x_axis, similarities['mixed'], label='Similarity to (1, -1) [Mixed]', color='purple')
+    plt.plot(x_axis, similarities['avoid'], label='Similarity to (0, -1) [Avoidance]', color='red')
 
     plt.axvline(x=50, color='gray', linestyle='--', label='Transition (1, -1)')
-    plt.title("Policy Evolution under Asymmetric Rewards", fontsize=14)
-    plt.xlabel("Interpolation Progress (%)", fontsize=12)
-    plt.ylabel("Policy Similarity (Exact Action Match)", fontsize=12)
+    
+    # Removed hardcoded fontsizes so the rcParams above can take control
+    plt.title("Policy Evolution under Asymmetric Rewards")
+    plt.xlabel("Interpolation Progress")
+    plt.ylabel("Policy Similarity (Exact Action Match)")
+    
     plt.xticks(ticks=[0, 25, 50, 75, 100], labels=["(1, 0)", "(1, -0.5)", "(1, -1)", "(0.5, -1)", "(0, -1)"])
     plt.ylim(-0.05, 1.05)
     plt.grid(True, alpha=0.3)
     plt.legend(loc='best')
-    plt.tight_layout()
     
     save_path = f"{PLOT_DIR}/asym{exp_suffix}.pdf"
     plt.savefig(save_path, format='pdf')

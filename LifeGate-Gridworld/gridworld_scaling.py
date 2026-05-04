@@ -5,6 +5,17 @@ import seaborn as sns
 import matplotlib.colors as mcolors
 from gridworld import get_gridworld, value_iter
 
+plt.rcParams.update({
+    'font.size': 18,          # Base global font size
+    'axes.titlesize': 22,     # Main title size
+    'axes.labelsize': 18,     # X and Y axis label size
+    'xtick.labelsize': 16,    # X axis tick labels
+    'ytick.labelsize': 16,    # Y axis tick labels
+    'legend.fontsize': 14,    # Legend text size
+    'lines.linewidth': 3,     # Thicker lines so they don't vanish when scaled
+    'figure.autolayout': True # Prevents labels from getting cut off at the edges
+})
+
 PLOT_DIR = "plots_scaling"
 os.makedirs(PLOT_DIR, exist_ok=True)
 
@@ -99,6 +110,8 @@ def gridworld_scaling():
         plt.title(title)
         plt.xlabel("Intermediate Reward (Step Cost)")
         plt.ylabel("Gamma")
+        
+        # tight_layout is also handled globally now, but keeping it here is safe
         plt.tight_layout()
         plt.savefig(f"{PLOT_DIR}/{filename}.pdf")
         plt.close()
