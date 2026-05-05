@@ -1,6 +1,6 @@
-# Between Life and Death: Examining Sparse Reward Designs in Healthcare RL
+# Between Life and Death: Examining Failure Modes of Sparse Reward Designs in Healthcare RL
 
-This repository contains the code and experiments for the paper **"Between Life and Death: Examining Sparse Reward Designs in Healthcare RL"**.
+This repository contains the code and experiments for the paper titled above.
 
 ## Repository Structure
 
