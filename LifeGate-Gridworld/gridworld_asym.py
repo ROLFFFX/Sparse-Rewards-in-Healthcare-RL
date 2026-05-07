@@ -4,15 +4,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 from gridworld import get_gridworld, value_iter
 
+# --- Global Font Settings (Synchronized) ---
 plt.rcParams.update({
-    'font.size': 18,          # Base global font size
-    'axes.titlesize': 22,     # Main title size
-    'axes.labelsize': 18,     # X and Y axis label size
-    'xtick.labelsize': 16,    # X axis tick labels
-    'ytick.labelsize': 16,    # Y axis tick labels
-    'legend.fontsize': 14,    # Legend text size
-    'lines.linewidth': 3,     # Thicker lines so they don't vanish when scaled
-    'figure.autolayout': True # Prevents labels from getting cut off at the edges
+    'font.family': 'serif',
+    'mathtext.fontset': 'cm',
+    'font.size': 18,
+    'axes.titlesize': 22,
+    'axes.labelsize': 18,
+    'xtick.labelsize': 16,
+    'ytick.labelsize': 16,
+    'legend.fontsize': 14,
+    'lines.linewidth': 3,
+    'figure.autolayout': True
 })
 
 PLOT_DIR = "plots_asym"
@@ -43,13 +46,12 @@ def plot_similarity_trajectory(similarities, steps, exp_suffix=""):
     plt.figure(figsize=(10, 6))
     x_axis = np.linspace(0, 100, steps + 1)
     
-    plt.plot(x_axis, similarities['seek'], label='Similarity to (1, 0) [Survival]', color='blue')
-    plt.plot(x_axis, similarities['mixed'], label='Similarity to (1, -1) [Mixed]', color='purple')
-    plt.plot(x_axis, similarities['avoid'], label='Similarity to (0, -1) [Avoidance]', color='red')
+    plt.plot(x_axis, similarities['seek'], label=r'Similarity to $\pi_{+}^{*}$ [Survival]', color='blue')
+    plt.plot(x_axis, similarities['mixed'], label=r'Similarity to $\pi_{\pm}^{*}$ [Mixed]', color='purple')
+    plt.plot(x_axis, similarities['avoid'], label=r'Similarity to $\pi_{-}^{*}$ [Avoidance]', color='red')
 
     plt.axvline(x=50, color='gray', linestyle='--', label='Transition (1, -1)')
     
-    # Removed hardcoded fontsizes so the rcParams above can take control
     plt.title("Policy Evolution under Asymmetric Rewards")
     plt.xlabel("Interpolation Progress")
     plt.ylabel("Policy Similarity (Exact Action Match)")
@@ -97,19 +99,16 @@ def run_asym(gamma=1.0, slip_prob=0.2, intermediate_reward=0.00, steps=1000, exp
 def run_all_asym_sweeps():
     print("Starting Comprehensive Asymmetric Sweeps...\n")
     
-    # Define the parameter spaces for the sweep
     gammas = [1.0, 0.9]
     slip_probs = [0.2, 0.0]
     intermediate_rewards = [0.0, -0.04]
     
-    # Generate all 8 combinations
     experiments = list(itertools.product(gammas, slip_probs, intermediate_rewards))
     print(f"Total Asymmetric Combinations to run: {len(experiments)}\n")
     
     for gamma, slip, reward in experiments:
         suffix = f"_g{gamma}_slip{slip}_step{reward}"
         
-        # Determine step count based on the discount factor
         current_steps = 10000 if gamma < 1.0 else 10
         
         run_asym(

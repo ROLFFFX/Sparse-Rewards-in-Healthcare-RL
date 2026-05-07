@@ -5,15 +5,18 @@ import seaborn as sns
 import matplotlib.colors as mcolors
 from gridworld import get_gridworld, value_iter
 
+# --- Global Font Settings (Synchronized) ---
 plt.rcParams.update({
-    'font.size': 18,          # Base global font size
-    'axes.titlesize': 22,     # Main title size
-    'axes.labelsize': 18,     # X and Y axis label size
-    'xtick.labelsize': 16,    # X axis tick labels
-    'ytick.labelsize': 16,    # Y axis tick labels
-    'legend.fontsize': 14,    # Legend text size
-    'lines.linewidth': 3,     # Thicker lines so they don't vanish when scaled
-    'figure.autolayout': True # Prevents labels from getting cut off at the edges
+    'font.family': 'serif',
+    'mathtext.fontset': 'cm',
+    'font.size': 18,
+    'axes.titlesize': 22,
+    'axes.labelsize': 18,
+    'xtick.labelsize': 16,
+    'ytick.labelsize': 16,
+    'legend.fontsize': 14,
+    'lines.linewidth': 3,
+    'figure.autolayout': True
 })
 
 PLOT_DIR = "plots_scaling"
@@ -111,14 +114,13 @@ def gridworld_scaling():
         plt.xlabel("Intermediate Reward (Step Cost)")
         plt.ylabel("Gamma")
         
-        # tight_layout is also handled globally now, but keeping it here is safe
         plt.tight_layout()
         plt.savefig(f"{PLOT_DIR}/{filename}.pdf")
         plt.close()
 
-    plot_heatmap(deaths_plus, "Death Preference Count (Survival)", "scaling_deaths_plus")
-    plot_heatmap(deaths_minus, "Death Preference Count (Avoidance)", "scaling_deaths_minus")
-    plot_heatmap(deaths_mixed, "Death Preference Count (Mixed)", "scaling_deaths_mixed")
+    plot_heatmap(deaths_plus, r"Death Preference Count ($\pi_{+}^{*}$)", "scaling_deaths_plus")
+    plot_heatmap(deaths_minus, r"Death Preference Count ($\pi_{-}^{*}$)", "scaling_deaths_minus")
+    plot_heatmap(deaths_mixed, r"Death Preference Count ($\pi_{\pm}^{*}$)", "scaling_deaths_mixed")
     print("Scaling Sweeps Complete.\n")
 
 if __name__ == "__main__":

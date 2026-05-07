@@ -4,6 +4,20 @@ import seaborn as sns
 import matplotlib.colors as mcolors
 import matplotlib.patches as patches
 
+# --- Global Font & Plot Settings for NeurIPS Matching ---
+plt.rcParams.update({
+    'font.family': 'serif',   
+    'mathtext.fontset': 'cm',
+    'font.size': 18,          
+    'axes.titlesize': 22,     
+    'axes.labelsize': 18,     
+    'xtick.labelsize': 16,    
+    'ytick.labelsize': 16,    
+    'legend.fontsize': 14,    
+    'lines.linewidth': 3,     
+    'figure.autolayout': True 
+})
+
 # --- Helper Functions ---
 def amax(arr):
     if len(arr) == 0:
@@ -163,17 +177,19 @@ def compute_Q(policy, P, gamma=0.99, theta=1e-15):
     return q_dict
 
 # --- Plotting Functions ---
-def plot_value_heatmap(V, save_path=None, show=False):
+def plot_value_heatmap(V, title=None, save_path=None, show=False):
     plt.figure(figsize=(4, 3))
     ax = sns.heatmap(V, cmap="coolwarm_r", center=0, vmin=-1, vmax=1,
                      square=True, linewidths=0.5, linecolor='gray',
                      cbar_kws={'label': 'Value'})
+    if title:
+        plt.title(title)
     plt.tight_layout()
     if save_path: plt.savefig(save_path, format='pdf', bbox_inches='tight')
     if show: plt.show()
     else: plt.close()
 
-def plot_highlighted_policies(prob_arrays, save_paths, grid_shape=(10, 10)):
+def plot_highlighted_policies(prob_arrays, save_paths, titles=None, grid_shape=(10, 10)):
     dir_map = {'N': (0, -1), 'E': (1, 0), 'S': (0, 1), 'W': (-1, 0)}
     directions = ['N', 'E', 'S', 'W']
     rows, cols = grid_shape
@@ -195,6 +211,9 @@ def plot_highlighted_policies(prob_arrays, save_paths, grid_shape=(10, 10)):
         plt.grid(True)
         plt.xticks(ticks=np.arange(cols+1))
         plt.yticks(ticks=np.arange(rows+1))
+        
+        if titles:
+            plt.title(titles[current_idx])
 
         other_indices = [x for x in range(3) if x != current_idx]
         idx1, idx2 = other_indices[0], other_indices[1]

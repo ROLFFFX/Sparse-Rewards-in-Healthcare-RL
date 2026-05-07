@@ -1,5 +1,6 @@
 import os
 import itertools
+import matplotlib.pyplot as plt
 from gridworld import (
     get_gridworld, value_iter, compute_Q, plot_highlighted_policies, 
     plot_value_heatmap, add_Vs, subtract_Vs, combine_Qs, visualize_gridworld
@@ -8,7 +9,7 @@ from gridworld import (
 PLOT_DIR = "plots_break_asms"
 os.makedirs(PLOT_DIR, exist_ok=True)
 
-def run_experiment(gamma, slip_prob, intermediate_reward, pos_reward=1.0, neg_reward=-1.0, exp_suffix=""):
+def run_experiment(gamma, slip_prob, intermediate_reward, pos_reward=1.0, neg_reward=-1.0):
     theta = 1e-15
     print(f"Running Base Exp: r={intermediate_reward}, gamma={gamma}, slip={slip_prob}")
     
@@ -25,22 +26,43 @@ def run_experiment(gamma, slip_prob, intermediate_reward, pos_reward=1.0, neg_re
     m_V, m_pi = value_iter(mixed, theta=theta, gamma=gamma)
     m_Q = compute_Q(m_pi, mixed, gamma, theta)
 
-    path_s = f'{PLOT_DIR}/plus_policy_sp{slip_prob:.1f}g{gamma:.1f}{exp_suffix}.pdf'
-    path_a = f'{PLOT_DIR}/minus_policy_sp{slip_prob:.1f}g{gamma:.1f}{exp_suffix}.pdf'
-    path_m = f"{PLOT_DIR}/mixed_policy_sp{slip_prob:.1f}g{gamma:.1f}{exp_suffix}.pdf"
+    # --- CLEANEST NAMING CONVENTION ---
+    suffix = f"_sp{slip_prob:.1f}_g{gamma:.1f}_step{intermediate_reward:.2f}.pdf"
 
-    plot_highlighted_policies([s_pi, a_pi, m_pi], [path_s, path_a, path_m])
+    path_s = f'{PLOT_DIR}/plus_policy{suffix}'
+    path_a = f'{PLOT_DIR}/minus_policy{suffix}'
+    path_m = f"{PLOT_DIR}/mixed_policy{suffix}"
+
+    plot_highlighted_policies(
+        [s_pi, a_pi, m_pi], 
+        [path_s, path_a, path_m],
+        titles=[r"$\pi_{+}^{*}$", r"$\pi_{-}^{*}$", r"$\pi_{\pm}^{*}$"]
+    )
 
     s_plus_a = add_Vs(s_V, a_V)
     sq_plus_aq = combine_Qs(s_Q, a_Q, "+")
 
     subtracted = subtract_Vs(m_V, s_plus_a)
-    plot_value_heatmap(subtracted, save_path=f"{PLOT_DIR}/gridworld_add_sp{slip_prob:.1f}g{gamma:.1f}{exp_suffix}.pdf")
+    plot_value_heatmap(
+        subtracted, 
+        title=r"$V_{\pm}(s) - (V_{+}(s) + V_{-}(s))$", 
+        save_path=f"{PLOT_DIR}/gridworld_add{suffix}"
+    )
 
     s_minus_a = subtract_Vs(s_V, a_V)
-    plot_value_heatmap(s_minus_a, save_path=f"{PLOT_DIR}/gridworld_subtract_sp{slip_prob:.1f}g{gamma:.1f}{exp_suffix}.pdf")
+    plot_value_heatmap(
+        s_minus_a, 
+        title=r"$V_{+}(s) - V_{-}(s)$", 
+        save_path=f"{PLOT_DIR}/gridworld_subtract{suffix}"
+    )
 
 def gridworld_break_asms():
+    plt.rcdefaults() 
+    plt.rcParams.update({
+        'font.family': 'serif',
+        'mathtext.fontset': 'cm'
+    })
+    
     visualize_gridworld(f"{PLOT_DIR}/gridworld_layout.pdf")
     
     gammas = [1.0, 0.9]
@@ -51,8 +73,7 @@ def gridworld_break_asms():
     print(f"Total Base Combinations: {len(experiments)}")
     
     for gamma, slip, reward in experiments:
-        suffix = f"_g{gamma}_slip{slip}_step{reward}"
-        run_experiment(gamma=gamma, slip_prob=slip, intermediate_reward=reward, exp_suffix=suffix)
+        run_experiment(gamma=gamma, slip_prob=slip, intermediate_reward=reward)
     print("Base Assumptions Complete.\n")
 
 if __name__ == "__main__":
