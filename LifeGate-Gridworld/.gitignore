@@ -19,3 +19,9 @@ plots_scaling/
 # OS Generated Files
 # -----------------------------
 .DS_Store
+
+# Dead-end drift runs
+plots_break_asms_drift/
+plots_scaling_drift/
+drift_danger_counts.json
+*.log
