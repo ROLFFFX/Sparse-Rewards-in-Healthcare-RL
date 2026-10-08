@@ -11,6 +11,9 @@ __pycache__/
 /mimic-sepsis/preprocessing
 /mimic-sepsis/pipeline/generate_reward_variants.ipynb
 /mimic-sepsis/data
+/mimic-sepsis/cohort/
+/mimic-sepsis/pipeline/plot_mimic_policies.py
+/mimic-sepsis/pipeline/mimic_policies.*
 /ICU-Sepsis
 
 draft.md
